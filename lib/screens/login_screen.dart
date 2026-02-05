@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import '../services/moodle_service.dart';
-import 'home_screen.dart';
+import '../screens/courses_screen.dart';
+
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
-
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
@@ -15,48 +15,54 @@ class _LoginScreenState extends State<LoginScreen> {
 
   final MoodleService moodleService = MoodleService();
 
+    
   bool loading = false;
 
-  void login() async {
-    setState(() {
-      loading = true;
-    });
+ void login() async {
 
-    final token = await moodleService.login(
-      userController.text.trim(),
-      passController.text.trim(),
-    );
+  setState(() {
+    loading = true;
+  });
 
-    // Validar token vacío
-    if (token == null || token.isEmpty) {
-      setState(() {
-        loading = false;
-      });
+  final token = await moodleService.login(
+    userController.text.trim(),
+    passController.text.trim(),
+  );
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Credenciales incorrectas")));
-      return;
-    }
-
-    // Verificar que token funcione en Moodle
-    final userData = await moodleService.getUserData(token);
+  if (token == null || token.isEmpty) {
 
     setState(() {
       loading = false;
     });
 
-    if (userData != null) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
-      );
-    } else {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Token inválido")));
-    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Credenciales incorrectas")),
+    );
+    return;
   }
+
+  final userData = await moodleService.getUserData(token);
+
+  setState(() {
+    loading = false;
+  });
+
+  if (userData != null) {
+    final int userId= userData["userid"];
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CoursesScreen(token: token, userId: userId),
+      ),
+    );
+
+  } else {
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Token inválido")),
+    );
+  }
+}
 
   @override
   Widget build(BuildContext context) {
