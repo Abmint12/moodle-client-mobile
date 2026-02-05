@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:moodle_client_mobile/screens/assignment_submission_screen.dart';
 import '../services/moodle_service.dart';
 
 class CourseDetailScreen extends StatefulWidget {
@@ -67,7 +68,16 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                     onTap: () {
                       // Aquí podrías navegar a la pantalla de envío de tareas si es assign
                       if (mod["modname"] == 'assign') {
-                        // Navigator.push(...) -> AssignmentSubmissionScreen
+                         Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => AssignmentSubmissionScreen(
+                              token:widget.token, 
+                              assignmentId: mod["instance"], 
+                              assignmentName: mod["mod"],
+                            ),
+                          ),
+                        );
                       }
                     },
                   );
