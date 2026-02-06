@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import '../services/moodle_service.dart';
@@ -7,7 +7,7 @@ class AssignmentSubmissionScreen extends StatefulWidget {
   final String token;
   final int assignmentId;
   final String assignmentName;
-  final List<String>? allowedTypes; // Tipos de archivos permitidos
+  final List<String>? allowedTypes;
 
   const AssignmentSubmissionScreen({
     super.key,
@@ -27,23 +27,24 @@ class _AssignmentSubmissionScreenState
   final TextEditingController _textController = TextEditingController();
   List<PlatformFile> _selectedFiles = [];
   bool _sending = false;
+  Map<String, double> _uploadProgress = {};
 
-  // Seleccionar archivos según tipos permitidos
   void _pickFiles() async {
     final result = await FilePicker.platform.pickFiles(
       type: widget.allowedTypes != null ? FileType.custom : FileType.any,
       allowedExtensions: widget.allowedTypes,
       allowMultiple: true,
+      withData: true, // <- importante para usar bytes
     );
 
     if (result != null) {
       setState(() {
         _selectedFiles = result.files;
+        _uploadProgress = {for (var f in _selectedFiles) f.name: 0.0};
       });
     }
   }
 
-  // Enviar la tarea a Moodle
   void _sendSubmission() async {
     if (_textController.text.isEmpty && _selectedFiles.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -57,7 +58,6 @@ class _AssignmentSubmissionScreenState
     bool successText = true;
     bool successFiles = true;
 
-    // Enviar texto si hay
     if (_textController.text.isNotEmpty) {
       successText = await MoodleService().submitAssignment(
         widget.token,
@@ -66,15 +66,39 @@ class _AssignmentSubmissionScreenState
       );
     }
 
-    // TODO: Enviar archivos a Moodle usando su API
-    // Por ahora solo mostramos que se seleccionaron
     if (_selectedFiles.isNotEmpty) {
-      // Aquí debes implementar la subida real de archivos según Moodle
       for (var file in _selectedFiles) {
-        print("Archivo a subir: ${file.name} (${file.size} bytes)");
+        bool result = false;
+
+        if (file.bytes != null) {
+          result = await MoodleService().uploadFileFromBytes(
+            file.bytes!,
+            file.name,
+            widget.token,
+            widget.assignmentId,
+            (progress) {
+              setState(() {
+                _uploadProgress[file.name] = progress;
+              });
+            },
+          );
+        } else if (file.path != null) {
+          result = await MoodleService().uploadFileWithProgress(
+            file.path!,
+            widget.token,
+            widget.assignmentId,
+            (progress) {
+              setState(() {
+                _uploadProgress[file.name] = progress;
+              });
+            },
+          );
+        } else {
+          print('No se puede subir ${file.name}, sin path ni bytes');
+        }
+
+        if (!result) successFiles = false;
       }
-      // Simulamos éxito
-      successFiles = true;
     }
 
     setState(() => _sending = false);
@@ -101,7 +125,6 @@ class _AssignmentSubmissionScreenState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Campo de texto
               TextField(
                 controller: _textController,
                 maxLines: 8,
@@ -111,14 +134,11 @@ class _AssignmentSubmissionScreenState
                 ),
               ),
               const SizedBox(height: 16),
-
-              // Selección de archivos
               ElevatedButton.icon(
                 icon: const Icon(Icons.attach_file),
                 label: const Text("Agregar archivos"),
                 onPressed: _sending ? null : _pickFiles,
               ),
-
               if (_selectedFiles.isNotEmpty) ...[
                 const SizedBox(height: 8),
                 const Text(
@@ -126,13 +146,17 @@ class _AssignmentSubmissionScreenState
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 4),
-                for (var file in _selectedFiles)
+                for (var file in _selectedFiles) ...[
                   Text("${file.name} (${(file.size / 1024).toStringAsFixed(2)} KB)"),
+                  LinearProgressIndicator(
+                    value: _uploadProgress[file.name] ?? 0.0,
+                    backgroundColor: Colors.grey[200],
+                    color: Colors.blue,
+                  ),
+                  const SizedBox(height: 8),
+                ]
               ],
-
               const SizedBox(height: 16),
-
-              // Botón enviar
               ElevatedButton(
                 onPressed: _sending ? null : _sendSubmission,
                 child: _sending

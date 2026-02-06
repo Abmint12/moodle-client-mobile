@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:moodle_client_mobile/screens/course_detail_screen.dart';
+import 'login_screen.dart'; // ✅ IMPORTAR LOGIN
 import '../services/moodle_service.dart';
 
 class CoursesScreen extends StatefulWidget {
@@ -21,10 +22,30 @@ class _CoursesScreenState extends State<CoursesScreen> {
     _coursesFuture = MoodleService().getCourses(widget.token, widget.userId);
   }
 
+  // ✅ FUNCIÓN CERRAR SESIÓN
+  void _logout() {
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (route) => false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Mis Cursos")),
+      appBar: AppBar(
+        title: const Text("Mis Cursos"),
+
+        // ✅ BOTÓN LOGOUT
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout_rounded),
+            onPressed: _logout,
+          ),
+        ],
+      ),
+
       body: FutureBuilder<List<dynamic>>(
         future: _coursesFuture,
         builder: (context, snapshot) {

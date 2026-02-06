@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 
 class MoodleService {
@@ -239,4 +241,75 @@ class MoodleService {
   return false;
 }
 
+  // Subir archivo desde bytes (para .png y Android 10+)
+  Future<bool> uploadFileFromBytes(
+      Uint8List bytes,
+      String fileName,
+      String token,
+      int assignmentId,
+      void Function(double) onProgress) async {
+    try {
+      final uri = Uri.parse('$baseUrl/upload.php'); // Cambiar si tu endpoint es otro
+
+      final request = http.MultipartRequest('POST', uri)
+        ..fields['token'] = token
+        ..fields['filearea'] = 'draft'
+        ..fields['itemid'] = '0'
+        ..fields['filepath'] = '/'
+        ..fields['filename'] = fileName
+        ..files.add(http.MultipartFile.fromBytes('file', bytes, filename: fileName));
+
+      final response = await request.send();
+
+      onProgress(1.0);
+      final respStr = await response.stream.bytesToString();
+      print('Archivo subido: $respStr');
+
+      return response.statusCode == 200;
+    } catch (e) {
+      print('Error subida archivo: $e');
+      return false;
+    }
+  }
+
+  // Subir archivo desde path (opcional)
+  Future<bool> uploadFileWithProgress(
+      String filePath,
+      String token,
+      int assignmentId,
+      void Function(double) onProgress) async {
+    try {
+      final file = File(filePath);
+      final length = await file.length();
+
+      final uri = Uri.parse('$baseUrl/upload.php');
+
+      final request = http.MultipartRequest('POST', uri)
+        ..fields['token'] = token
+        ..fields['filearea'] = 'draft'
+        ..fields['itemid'] = '0'
+        ..fields['filepath'] = '/'
+        ..fields['filename'] = filePath.split('/').last
+        ..files.add(http.MultipartFile(
+          'file',
+          file.openRead(),
+          length,
+          filename: filePath.split('/').last,
+          contentType: http.MediaType('application', 'octet-stream'), // <- import 'package:http_parser/http_parser.dart';
+        ));
+
+      final streamedResponse = await request.send();
+      onProgress(1.0);
+      final respStr = await streamedResponse.stream.bytesToString();
+      print('Archivo subido: $respStr');
+
+      return streamedResponse.statusCode == 200;
+    } catch (e) {
+      print('Error subida archivo: $e');
+      return false;
+    }
+  }
 }
+
+
+
