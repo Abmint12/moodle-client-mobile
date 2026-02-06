@@ -1,61 +1,60 @@
 import 'package:flutter/material.dart';
 import '../services/moodle_service.dart';
-import 'forum_discussion_screen.dart';
 
 class ForumScreen extends StatefulWidget {
   final String token;
   final int courseId;
-
-  const ForumScreen({super.key, required this.token, required this.courseId});
+  final int forumId;
+  final String forumName;
+  
+  const ForumScreen({
+    Key? key,
+    required this.token,
+    required this.courseId,
+    required this.forumId,
+    required this.forumName,
+  }) : super(key: key);
 
   @override
   State<ForumScreen> createState() => _ForumScreenState();
 }
 
+
 class _ForumScreenState extends State<ForumScreen> {
-  late Future<List<dynamic>> _forumsFuture;
+  late Future<List<dynamic>> _discussionsFuture;
 
   @override
   void initState() {
     super.initState();
-    _forumsFuture =
-        MoodleService().getCourseForums(widget.token, widget.courseId);
+    _discussionsFuture = MoodleService().getForumDiscussions(widget.token, widget.forumId);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Foros")),
+      appBar: AppBar(title: Text(widget.forumName)),
       body: FutureBuilder<List<dynamic>>(
-        future: _forumsFuture,
+        future: _discussionsFuture,
         builder: (context, snapshot) {
-          if (!snapshot.hasData) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          final forums = snapshot.data!;
-          if (forums.isEmpty) {
-            return const Center(child: Text("No hay foros disponibles"));
+          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return const Center(child: Text("No hay discusiones disponibles"));
           }
 
+          final discussions = snapshot.data!;
+
           return ListView.builder(
-            itemCount: forums.length,
+            itemCount: discussions.length,
             itemBuilder: (context, index) {
-              final forum = forums[index];
+              final discussion = discussions[index];
               return ListTile(
-                title: Text(forum['name']),
-                subtitle: Text(forum['intro'] ?? ""),
+                title: Text(discussion['name'] ?? "Discusión"),
+                subtitle: Text("Creado por: ${discussion['userfullname'] ?? 'Desconocido'}"),
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ForumDiscussionScreen(
-                        token: widget.token,
-                        forumId: forum['id'],
-                        forumName: forum['name'],
-                      ),
-                    ),
-                  );
+                  // Aquí podrías ir a otra pantalla para ver los mensajes de la discusión
                 },
               );
             },
