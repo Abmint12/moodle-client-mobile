@@ -46,5 +46,5 @@ Desarrollar un cliente móvil que se conecte a Moodle utilizando API REST, permi
 
 ##  Arquitectura del Proyecto
 
-La aplicación fue desarrollada usando arquitectura por capas:
+La aplicación fue desarrollada usando arquitectura por capas
 
